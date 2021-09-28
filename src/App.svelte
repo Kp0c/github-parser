@@ -1,4 +1,5 @@
 <script lang="ts">
+import UIkit from 'uikit';
 import StatsTable from './components/stats-table.svelte';
 import type { Stats } from './models/stats';
 
@@ -16,9 +17,17 @@ let stats: Stats[] = [];
 async function parseLink() {
   const repo = new GitHubRepository($accessToken);
 
-  // TODO: add error handling
   isLoading = true;
-  stats = await repo.fetchStats(ghRequestLink, updateProgress.bind(this));
+  try {
+    stats = await repo.fetchStats(ghRequestLink, updateProgress.bind(this));
+  } catch (error) {
+    UIkit.notification({
+      message: error,
+      status: 'danger',
+      timeout: 2000,
+      pos: 'top-right'
+    });
+  }
   isLoading = false;
 }
 
