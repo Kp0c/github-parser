@@ -1,9 +1,9 @@
 import { Octokit } from '@octokit/core';
-import { flatMap, groupBy } from 'lodash';
-import type { RawCommentsStats } from '../models/raw-comments-stats';
+import { flatMap, groupBy, sumBy } from 'lodash';
 import type { Stats } from '../models/stats';
 import type { Comment } from '../models/comment';
-import type { LinkType } from '../models/link-type';
+import type { ParsedLink } from '../models/parsed-link';
+import type { RawStats } from '../models/raw-stats';
 
 export class GitHubRepository {
   private octokit: Octokit;
@@ -13,34 +13,18 @@ export class GitHubRepository {
   }
 
   async fetchStats(link: string, progressCallback: (progress: string) => void): Promise<Stats[]> {
-    const { owner, repo, id, type } = this.parseLink(link);
+    const parsedLink = this.parseLink(link);
 
     progressCallback('Loading comments');
-    const comments = type === 'commit' ? await this.getCommitComments(owner, repo, id) : await this.getPrComments(owner, repo, id);
+    const comments = parsedLink.type === 'commit' ? await this.getCommitComments(parsedLink) : await this.getPrComments(parsedLink);
 
-    const rawStats: RawCommentsStats[] = [];
-    for (let commentIdx = 0; commentIdx < comments.length; commentIdx++) {
-      const comment = comments[commentIdx];
-
-      progressCallback(`Loading reactions: ${commentIdx + 1}/${comments.length}`);
-      const reactions = await this.getReactions(owner, repo, comment.id, type);
-
-      rawStats.push({
-        user: comment.user.login,
-        reactions
-      });
-    }
+    const rawStats = this.buildRawStats(comments);
 
     progressCallback('Building result');
     return this.buildStats(rawStats);
   }
 
-  private parseLink(link: string): {
-    owner: string,
-    repo: string,
-    id: string,
-    type: LinkType
-  } {
+  private parseLink(link: string): ParsedLink {
     const linkSplitted = link.split('/');
 
     const gitHubIdx = linkSplitted.findIndex((part) => part.includes('github'));
@@ -55,33 +39,11 @@ export class GitHubRepository {
     };
   }
 
-  private async getPrComments(owner: string, repo: string, prId: string): Promise<Comment[]> {
+  private async getPrComments(parsedLink: ParsedLink): Promise<Comment[]> {
     const response = await this.octokit.request('GET /repos/{owner}/{repo}/pulls/{pull_number}/comments', {
-      owner,
-      repo,
-      pull_number: Number(prId)
-    });
-
-    return response.data;
-  }
-
-  private async getCommitComments(owner: string, repo: string, commitId: string): Promise<Comment[]> {
-    const response = await this.octokit.request('GET /repos/{owner}/{repo}/comments', {
-      owner,
-      repo,
-    });
-
-    const comments = response.data;
-
-    return comments.filter(comment => comment.commit_id === commitId);
-  }
-
-  private async getReactions(owner: string, repo: string, commentId: number, type: LinkType): Promise<string[]> {
-    const url = type === 'commit' ? '/repos/{owner}/{repo}/comments/{comment_id}/reactions' : '/repos/{owner}/{repo}/pulls/comments/{comment_id}/reactions';
-    const response = await this.octokit.request(`GET ${url}`, {
-      owner,
-      repo,
-      comment_id: commentId,
+      owner: parsedLink.owner,
+      repo: parsedLink.repo,
+      pull_number: Number(parsedLink.id),
       mediaType: {
         previews: [
           'squirrel-girl'
@@ -89,19 +51,34 @@ export class GitHubRepository {
       }
     });
 
-    return response.data.map((reaction) => reaction.content);
+    return response.data;
   }
 
-  private buildStats(rawStats: RawCommentsStats[]): Stats[] {
-    const usersComments = groupBy(rawStats, 'user');
+  private async getCommitComments(parsedLink: ParsedLink): Promise<Comment[]> {
+    const response = await this.octokit.request('GET /repos/{owner}/{repo}/commits/{commit_sha}/comments', {
+      owner: parsedLink.owner,
+      repo: parsedLink.repo,
+      commit_sha: parsedLink.id,
+      mediaType: {
+        previews: [
+          'squirrel-girl'
+        ]
+      }
+    });
+
+    const comments = response.data;
+
+    return comments.filter(comment => comment.commit_id === parsedLink.id);
+  }
+
+  private buildStats(rawStats: RawStats[]): Stats[] {
+    const usersComments = groupBy(rawStats, 'username');
 
     return Object.keys(usersComments).map(user => {
       const data = usersComments[user];
 
-      const allReactions = flatMap(data, 'reactions');
-
-      const likes = allReactions.filter(reaction => reaction === '+1').length;
-      const dislikes = allReactions.filter(reaction => reaction === '-1').length;
+      const likes = sumBy(data, 'likes');
+      const dislikes = sumBy(data, 'dislikes');
 
       return {
         user,
@@ -110,6 +87,14 @@ export class GitHubRepository {
         dislikes
       };
     });
+  }
+
+  private buildRawStats(comments: Comment[]): RawStats[] {
+    return comments.map((comment) => ({
+      username: comment.user.login,
+      likes: comment.reactions?.['+1'] ?? 0,
+      dislikes: comment.reactions?.['-1'] ?? 0
+    }));
   }
 }
 

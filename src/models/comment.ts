@@ -4,4 +4,8 @@ export interface Comment {
     login: string;
   },
   commit_id: string;
+  reactions?: {
+    '+1': number;
+    '-1': number;
+  }
 }
