@@ -15,6 +15,11 @@ export class GitHubRepository {
   async fetchStats(link: string, progressCallback: (progress: string) => void): Promise<Stats[]> {
     const parsedLink = this.parseLink(link);
 
+    // TODO: fix
+    /*if (!this.isValid(owner) || !this.isValid(repo) || !this.isValid(id)) {
+      throw new Error('Link is invalid');
+    }*/
+
     progressCallback('Loading comments');
     const comments = parsedLink.type === 'commit' ? await this.getCommitComments(parsedLink) : await this.getPrComments(parsedLink);
 
@@ -95,6 +100,11 @@ export class GitHubRepository {
       likes: comment.reactions?.['+1'] ?? 0,
       dislikes: comment.reactions?.['-1'] ?? 0
     }));
+  }
+
+  private isValid(str: string): boolean {
+    const normalized = str ?? '';
+    return normalized.length > 0;
   }
 }
 

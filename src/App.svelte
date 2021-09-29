@@ -1,4 +1,5 @@
 <script lang="ts">
+import UIkit from 'uikit';
 import StatsTable from './components/stats-table.svelte';
 import type { Stats } from './models/stats';
 
@@ -9,15 +10,24 @@ import { accessToken } from './stores/access-token.store';
 let ghRequestLink = '';
 let isLoading = false;
 let loadingStep = '';
+$: isParseButtonEnabled = ghRequestLink.length !== 0 && $accessToken.length !== 0;
 
 let stats: Stats[] = [];
 
 async function parseLink() {
   const repo = new GitHubRepository($accessToken);
 
-  // TODO: add error handling
   isLoading = true;
-  stats = await repo.fetchStats(ghRequestLink, updateProgress.bind(this));
+  try {
+    stats = await repo.fetchStats(ghRequestLink, updateProgress.bind(this));
+  } catch (error) {
+    UIkit.notification({
+      message: error,
+      status: 'danger',
+      timeout: 2000,
+      pos: 'top-right'
+    });
+  }
   isLoading = false;
 }
 
@@ -27,6 +37,7 @@ function updateProgress(progress: string): void {
 </script>
 
 <div class="uk-container uk-padding">
+  <h1 class="uk-heading-divider uk-text-center">GitHub Parser</h1>
   <div class="uk-card uk-card-body uk-card-default">
     <div class="uk-card-title">Enter your GitHub access token</div>
     <input class="uk-input" bind:value={$accessToken}> 
@@ -36,7 +47,7 @@ function updateProgress(progress: string): void {
   <div class="uk-card uk-card-body uk-card-default uk-margin">
     <div class="uk-card-title">Enter GitHub Pull Request or Commit link</div>
     <input class="uk-input" bind:value={ghRequestLink}>
-    <button class="uk-button uk-button-primary uk-margin-small uk-align-right" on:click="{parseLink}">Parse</button>
+    <button class="uk-button uk-button-primary uk-margin-small uk-align-right" on:click="{parseLink}" disabled="{!isParseButtonEnabled}">Parse</button>
   </div>
 
   {#if isLoading}
