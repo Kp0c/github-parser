@@ -27,7 +27,8 @@
     "svelte-preprocess": "^4.9.5",
     "tslib": "^2.0.0",
     "typescript": "^4.4.3",
-    "@types/uikit": "^3.3.2"
+    "@types/uikit": "^3.3.2",
+    "uikit": "^3.7.4"
   },
   "dependencies": {
     "lodash": "^4.17.21",

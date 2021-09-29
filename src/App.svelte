@@ -1,5 +1,6 @@
 <script lang="ts">
 import UIkit from 'uikit';
+import GhAccessToken from './components/gh-access-token.svelte';
 import StatsTable from './components/stats-table.svelte';
 import type { Stats } from './models/stats';
 
@@ -15,6 +16,8 @@ $: isParseButtonEnabled = ghRequestLink.length !== 0 && $accessToken.length !== 
 let stats: Stats[] = [];
 
 async function parseLink() {
+  stats = [];
+
   const repo = new GitHubRepository($accessToken);
 
   isLoading = true;
@@ -38,11 +41,8 @@ function updateProgress(progress: string): void {
 
 <div class="uk-container uk-padding">
   <h1 class="uk-heading-divider uk-text-center">GitHub Parser</h1>
-  <div class="uk-card uk-card-body uk-card-default">
-    <div class="uk-card-title">Enter your GitHub access token</div>
-    <input class="uk-input" bind:value={$accessToken}> 
-    <a href="https://github.com/settings/tokens" target="_blank">Navigate to Personal access tokens on GitHub</a>
-  </div>
+
+  <GhAccessToken/>
 
   <div class="uk-card uk-card-body uk-card-default uk-margin">
     <div class="uk-card-title">Enter GitHub Pull Request or Commit link</div>

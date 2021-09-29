@@ -1,9 +1,7 @@
 import { Octokit } from '@octokit/core';
-import { flatMap, groupBy, sumBy } from 'lodash';
-import type { Stats } from '../models/stats';
+import { Stats } from '../models/stats';
 import type { Comment } from '../models/comment';
-import type { ParsedLink } from '../models/parsed-link';
-import type { RawStats } from '../models/raw-stats';
+import { ParsedLink } from '../models/parsed-link';
 
 export class GitHubRepository {
   private octokit: Octokit;
@@ -13,35 +11,13 @@ export class GitHubRepository {
   }
 
   async fetchStats(link: string, progressCallback: (progress: string) => void): Promise<Stats[]> {
-    const parsedLink = this.parseLink(link);
-
-    // TODO: fix
-    /*if (!this.isValid(owner) || !this.isValid(repo) || !this.isValid(id)) {
-      throw new Error('Link is invalid');
-    }*/
+    const parsedLink = ParsedLink.fromRawLink(link);
 
     progressCallback('Loading comments');
     const comments = parsedLink.type === 'commit' ? await this.getCommitComments(parsedLink) : await this.getPrComments(parsedLink);
 
-    const rawStats = this.buildRawStats(comments);
-
     progressCallback('Building result');
-    return this.buildStats(rawStats);
-  }
-
-  private parseLink(link: string): ParsedLink {
-    const linkSplitted = link.split('/');
-
-    const gitHubIdx = linkSplitted.findIndex((part) => part.includes('github'));
-
-    const isCommit = link.includes('commit');
-
-    return {
-      owner: linkSplitted[gitHubIdx + 1],
-      repo: linkSplitted[gitHubIdx + 2],
-      id: linkSplitted[gitHubIdx + 4],
-      type : isCommit ? 'commit' : 'pullRequest'
-    };
+    return Stats.fromComments(comments);
   }
 
   private async getPrComments(parsedLink: ParsedLink): Promise<Comment[]> {
@@ -71,40 +47,7 @@ export class GitHubRepository {
       }
     });
 
-    const comments = response.data;
-
-    return comments.filter(comment => comment.commit_id === parsedLink.id);
-  }
-
-  private buildStats(rawStats: RawStats[]): Stats[] {
-    const usersComments = groupBy(rawStats, 'username');
-
-    return Object.keys(usersComments).map(user => {
-      const data = usersComments[user];
-
-      const likes = sumBy(data, 'likes');
-      const dislikes = sumBy(data, 'dislikes');
-
-      return {
-        user,
-        comments: data.length,
-        likes,
-        dislikes
-      };
-    });
-  }
-
-  private buildRawStats(comments: Comment[]): RawStats[] {
-    return comments.map((comment) => ({
-      username: comment.user.login,
-      likes: comment.reactions?.['+1'] ?? 0,
-      dislikes: comment.reactions?.['-1'] ?? 0
-    }));
-  }
-
-  private isValid(str: string): boolean {
-    const normalized = str ?? '';
-    return normalized.length > 0;
+    return response.data;
   }
 }
 

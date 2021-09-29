@@ -1,10 +1,12 @@
 <script lang="ts">
+import { fly } from 'svelte/transition';
+
 import type { Stats } from '../models/stats';
 
 export let stats: Stats[] = [];
 </script>
 
-<table class="uk-table uk-table-divider uk-table-striped">
+<table transition:fly="{{ y: 200, duration: 1000 }}" class="uk-table uk-table-divider uk-table-striped">
   <thead>
     <tr>
       <th>Username</th>
