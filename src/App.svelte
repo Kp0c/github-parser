@@ -40,7 +40,12 @@ function updateProgress(progress: string): void {
 </script>
 
 <div class="uk-container uk-padding">
-  <h1 class="uk-heading-divider uk-text-center">GitHub Parser</h1>
+  <div class="uk-text-small uk-text-right">
+    <span class="uk-text-meta">Created by</span>
+    <a href="https://github.com/Kp0c" target="_blank">Kp0c</a>
+  </div>
+
+  <h1 class="uk-heading-divider uk-text-center uk-margin-remove-top">GitHub Parser</h1>
 
   <GhAccessToken/>
 
