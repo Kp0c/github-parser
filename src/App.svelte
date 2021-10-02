@@ -1,12 +1,16 @@
 <script lang="ts">
+import { onDestroy } from 'svelte';
+
 import UIkit from 'uikit';
 import GhAccessToken from './components/gh-access-token.svelte';
 import StatsTable from './components/stats-table.svelte';
 import type { Stats } from './models/stats';
 
 import { StatsService } from './services/stats.service';
+import { FetchStatsStatus as FetchStatsProgressStatus } from './enums/fetch-stats-progress-status.enum';
 
 import { accessToken } from './stores/access-token.store';
+import { fetchStatsProgressStatus } from './stores/fetch-stats-progress-status.store';
 
 let ghRequestLink = '';
 let isLoading = false;
@@ -15,24 +19,54 @@ $: isParseButtonEnabled = ghRequestLink.length !== 0 && $accessToken.length !== 
 
 let stats: Stats[] = [];
 
-async function getStatsAsync() {
+const statusUnsubscribe = fetchStatsProgressStatus.subscribe((status) => {
+  switch (status.status) {
+    case FetchStatsProgressStatus.Started:
+      isLoading = true;
+      break;
+    case FetchStatsProgressStatus.Success:
+      isLoading = false;
+
+      if (typeof status?.payload === 'object') {
+        stats = status.payload;
+      }
+      break;
+    case FetchStatsProgressStatus.Error:
+      let error = 'Error happened while fetching stats';
+      if (typeof status?.payload === 'string') {
+        error = status.payload;
+      }
+
+      showError(error);
+      isLoading = false;
+      break;
+    case FetchStatsProgressStatus.LoadingComments:
+      setProgress('Loading comments');
+      break;
+    case FetchStatsProgressStatus.BuildingResults:
+      setProgress('Building result');
+      break;
+  }
+});
+
+onDestroy(statusUnsubscribe);
+
+function getStats() {
   stats = [];
 
   const repo = StatsService.getInstance();
   repo.setAccessToken($accessToken);
 
-  isLoading = true;
-  try {
-    stats = await repo.fetchStats(ghRequestLink, setProgress.bind(this));
-  } catch (error) {
-    UIkit.notification({
+  repo.fetchStatsAsync(ghRequestLink);
+}
+
+function showError(error: string): void {
+  UIkit.notification({
       message: error,
       status: 'danger',
       timeout: 2000,
       pos: 'top-right'
     });
-  }
-  isLoading = false;
 }
 
 function setProgress(progress: string): void {
@@ -53,7 +87,7 @@ function setProgress(progress: string): void {
   <div class="uk-card uk-card-body uk-card-default uk-margin">
     <div class="uk-card-title">Enter GitHub Pull Request or Commit link</div>
     <input class="uk-input" bind:value={ghRequestLink}>
-    <button class="uk-button uk-button-primary uk-margin-small uk-align-right" on:click="{getStatsAsync}" disabled="{!isParseButtonEnabled}">Parse</button>
+    <button class="uk-button uk-button-primary uk-margin-small uk-align-right" on:click="{getStats}" disabled="{!isParseButtonEnabled}">Parse</button>
   </div>
 
   {#if isLoading}
