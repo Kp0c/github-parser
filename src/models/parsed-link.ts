@@ -1,9 +1,17 @@
+import { IsNotEmpty, validateSync } from 'class-validator';
 import type { LinkType } from './link-type';
 
 export class ParsedLink {
+  @IsNotEmpty()
   owner: string;
+
+  @IsNotEmpty()
   repo: string;
+
+  @IsNotEmpty()
   id: string;
+
+  @IsNotEmpty()
   type: LinkType;
 
   constructor(fields: {
@@ -23,6 +31,10 @@ export class ParsedLink {
 
     const parseResults = parseRegex.exec(link);
 
+    if (parseResults === null) {
+      throw new Error('Link is incorrect');
+    }
+
     const isCommit = parseResults[3] === 'commit';
 
     const parsedLink = new ParsedLink({
@@ -32,19 +44,25 @@ export class ParsedLink {
       type: isCommit ? 'commit' : 'pullRequest'
     });
 
-    if (!parsedLink.isValid()) {
-      throw new Error('Link is invalid');
+    const error = parsedLink.getValidationError();
+    if (error !== null) {
+      throw new Error(error);
     }
 
     return parsedLink;
   }
 
-  isValid(): boolean {
-    return this.isFieldValid(this.owner) && this.isFieldValid(this.repo) && this.isFieldValid(this.id);
-  }
+  getValidationError(): string | null {
+    const errors = validateSync(this)
 
-  private isFieldValid(field: string): boolean {
-    const normalizedField = field ?? '';
-    return normalizedField.length > 0;
+    if (errors.length === 0) {
+      return null;
+    }
+
+    const failedConstraints = errors.map((error) => error.constraints);
+
+    return failedConstraints.map((constraints) => {
+      return Object.values(constraints).join(', ');
+    }).join(', ');
   }
 }
