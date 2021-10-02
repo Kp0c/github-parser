@@ -19,16 +19,16 @@ export class ParsedLink {
   }
 
   static fromRawLink(link: string): ParsedLink {
-    const linkSplitted = link.split('/');
+    const parseRegex = /github.com\/([\w-]+)\/([\w-]+)\/(\w+)\/(\w+)/;
 
-    const gitHubIdx = linkSplitted.findIndex((part) => part.includes('github'));
+    const parseResults = parseRegex.exec(link);
 
-    const isCommit = link.includes('commit');
+    const isCommit = parseResults[3] === 'commit';
 
     const parsedLink = new ParsedLink({
-      owner: linkSplitted[gitHubIdx + 1],
-      repo: linkSplitted[gitHubIdx + 2],
-      id: linkSplitted[gitHubIdx + 4],
+      owner: parseResults[1],
+      repo: parseResults[2],
+      id: parseResults[4],
       type: isCommit ? 'commit' : 'pullRequest'
     });
 
