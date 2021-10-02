@@ -23,7 +23,7 @@ async function getStatsAsync() {
 
   isLoading = true;
   try {
-    stats = await repo.fetchStats(ghRequestLink, updateProgress.bind(this));
+    stats = await repo.fetchStats(ghRequestLink, setProgress.bind(this));
   } catch (error) {
     UIkit.notification({
       message: error,
@@ -35,7 +35,7 @@ async function getStatsAsync() {
   isLoading = false;
 }
 
-function updateProgress(progress: string): void {
+function setProgress(progress: string): void {
   loadingStep = progress;
 }
 </script>
