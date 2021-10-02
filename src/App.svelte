@@ -18,7 +18,8 @@ let stats: Stats[] = [];
 async function getStatsAsync() {
   stats = [];
 
-  const repo = new GitHubRepository($accessToken);
+  const repo = GitHubRepository.getInstance();
+  repo.setAccessToken($accessToken);
 
   isLoading = true;
   try {

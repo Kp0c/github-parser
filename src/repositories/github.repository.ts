@@ -4,10 +4,25 @@ import type { Comment } from '../models/comment';
 import { ParsedLink } from '../models/parsed-link';
 
 export class GitHubRepository {
-  private octokit: Octokit;
+  private static instance: GitHubRepository = null;
 
-  constructor(accessToken: string) {
-    this.octokit = new Octokit({ auth: accessToken });
+  private octokit: Octokit = null;
+  private currentAccessToken: string;
+
+  private constructor() { }
+
+  static getInstance(): GitHubRepository {
+    if (this.instance === null) {
+      this.instance = new GitHubRepository();
+    }
+
+    return this.instance;
+  }
+
+  setAccessToken(accessToken: string): void {
+    if (this.octokit === null || this.currentAccessToken !== accessToken) {
+      this.octokit = new Octokit({ auth: accessToken });
+    }
   }
 
   async fetchStats(link: string, progressCallback: (progress: string) => void): Promise<Stats[]> {
