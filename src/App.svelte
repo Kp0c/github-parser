@@ -15,7 +15,7 @@ $: isParseButtonEnabled = ghRequestLink.length !== 0 && $accessToken.length !== 
 
 let stats: Stats[] = [];
 
-async function parseLink() {
+async function getStatsAsync() {
   stats = [];
 
   const repo = new GitHubRepository($accessToken);
@@ -52,7 +52,7 @@ function updateProgress(progress: string): void {
   <div class="uk-card uk-card-body uk-card-default uk-margin">
     <div class="uk-card-title">Enter GitHub Pull Request or Commit link</div>
     <input class="uk-input" bind:value={ghRequestLink}>
-    <button class="uk-button uk-button-primary uk-margin-small uk-align-right" on:click="{parseLink}" disabled="{!isParseButtonEnabled}">Parse</button>
+    <button class="uk-button uk-button-primary uk-margin-small uk-align-right" on:click="{getStatsAsync}" disabled="{!isParseButtonEnabled}">Parse</button>
   </div>
 
   {#if isLoading}
