@@ -4,7 +4,7 @@ import GhAccessToken from './components/gh-access-token.svelte';
 import StatsTable from './components/stats-table.svelte';
 import type { Stats } from './models/stats';
 
-import { GitHubRepository } from './repositories/github.repository';
+import { StatsService } from './services/stats.service';
 
 import { accessToken } from './stores/access-token.store';
 
@@ -18,7 +18,7 @@ let stats: Stats[] = [];
 async function getStatsAsync() {
   stats = [];
 
-  const repo = GitHubRepository.getInstance();
+  const repo = StatsService.getInstance();
   repo.setAccessToken($accessToken);
 
   isLoading = true;

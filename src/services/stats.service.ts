@@ -2,18 +2,19 @@ import { Octokit } from '@octokit/core';
 import { Stats } from '../models/stats';
 import type { Comment } from '../models/comment';
 import { ParsedLink } from '../models/parsed-link';
+import { flatMap, groupBy, sumBy } from 'lodash';
 
-export class GitHubRepository {
-  private static instance: GitHubRepository = null;
+export class StatsService {
+  private static instance: StatsService = null;
 
   private octokit: Octokit = null;
   private currentAccessToken: string;
 
   private constructor() { }
 
-  static getInstance(): GitHubRepository {
+  static getInstance(): StatsService {
     if (this.instance === null) {
-      this.instance = new GitHubRepository();
+      this.instance = new StatsService();
     }
 
     return this.instance;
@@ -32,7 +33,7 @@ export class GitHubRepository {
     const comments = parsedLink.type === 'commit' ? await this.getCommitComments(parsedLink) : await this.getPrComments(parsedLink);
 
     progressCallback('Building result');
-    return Stats.fromComments(comments);
+    return this.getStatsFromComments(comments);
   }
 
   private async getPrComments(parsedLink: ParsedLink): Promise<Comment[]> {
@@ -63,6 +64,26 @@ export class GitHubRepository {
     });
 
     return response.data;
+  }
+
+  private getStatsFromComments(comments: Comment[]): Stats[] {
+    const usersComments = groupBy(comments, (comment) => comment.user.login);
+
+    return Object.keys(usersComments).map(user => {
+      const data = usersComments[user];
+
+      const reactions = flatMap(data, (user) => user.reactions);
+
+      const likes = sumBy(reactions, (reaction) => reaction['+1']);
+      const dislikes = sumBy(reactions, (reaction) => reaction['-1']);
+
+      return new Stats({
+        user,
+        comments: data.length,
+        likes,
+        dislikes
+      });
+    });
   }
 }
 
